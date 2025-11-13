@@ -1,0 +1,44 @@
+# Dependencias
+/node_modules
+
+# Archivos de logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+
+# Archivos de build y temporales
+/dist
+/build
+/temp
+*.tsbuildinfo
+
+# Variables de entorno y configuraciones sensibles
+# ¡IMPORTANTE! NUNCA subas tus credenciales
+.env
+.env.*
+*.local
+.vscode/settings.json
+.vscode/tasks.json
+.vscode/launch.json
+.vscode/extensions.json
+
+# Archivos generados por paquetes
+/coverage
+/.nyc_output
+/package-lock.json
+/yarn.lock
+/pnpm-lock.yaml
+
+# macOS
+.DS_Store
+
+# IDEs
+.idea/
+.RData
+.Rhistory
+
+# Backups y otros
+*~
+*.swp

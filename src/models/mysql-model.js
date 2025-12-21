@@ -5,7 +5,8 @@ const connection = await mysql.createConnection({
     host: 'localhost',
     port: 3306,
     user: 'root',
-  
+    password: 'Loki_2903',
+    database: 'moondb'
 })
 
 if (!connection) {
@@ -20,24 +21,24 @@ export class MySQLModel {
 
     /**
      * Devuelve la misma forma que `connection.execute` ([rows, fields])
-     * Nota: validar el nombre de la tabla para evitar inyección básica.
+     * Nota para mi: validar el nombre de la tabla para evitar inyección básica.
      */
 
-    getAll(table) {
+    static getAll(table) {
         if (!/^[A-Za-z0-9_]+$/.test(table)) {
             throw new Error('Invalid table name')
         }
         return connection.execute(`SELECT * FROM \`${table}\``)
     }
 
-    getByid(table, id) {
+    static getByid(table, id) {
         if (!/^[A-Za-z0-9_]+$/.test(table)) {
             throw new Error('Invalid table name')
         }
         return connection.execute(`SELECT * FROM \`${table}\` WHERE id = ?`, [id])
     }
 
-    updateById(table, id, data) {
+    static updateById(table, id, data) {
         if (!/^[A-Za-z0-9_]+$/.test(table)) {
             throw new Error('Invalid table name')
         }
@@ -47,14 +48,14 @@ export class MySQLModel {
         return connection.execute(`UPDATE \`${table}\` SET ${fields} WHERE id = ?`, values)
     }
 
-    deleteById(table, id) {
+    static deleteById(table, id) {
         if (!/^[A-Za-z0-9_]+$/.test(table)) {
             throw new Error('Invalid table name')
         }
         return connection.execute(`DELETE FROM \`${table}\` WHERE id = ?`, [id])
     }
 
-    create(table, data) {
+    static create(table, data) {
         if (!/^[A-Za-z0-9_]+$/.test(table)) {
             throw new Error('Invalid table name')
         }

@@ -42,3 +42,9 @@ lerna-debug.log*
 # Backups y otros
 *~
 *.swp
+.env
+.env.local
+.env.development.local
+.env.test.local
+
+example.json

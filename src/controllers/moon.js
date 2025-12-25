@@ -117,5 +117,102 @@ export class MoonController {
         }
     }   
 
-    
+    /* Invoices Methods */
+
+    static async getAllInvoices(req, res) {
+        try {
+            const [rows] = await MySQLModel.getAll('invoices');
+            res.json(rows);
+        } catch (error) {
+            console.error("Error fetching invoices:", error);
+            res.status(500).json({ error: "Internal Server Error" });
+        }
+    }
+
+    static async createInvoice(req, res) {
+        const data = req.body;
+        console.log("Creating invoice with data:", data);
+        try {
+            const [result] = await MySQLModel.create('invoices', data);
+            res.status(201).json({ id: result.insertId, message: "Invoice created successfully" });
+        } catch (error) {
+            console.error("Error creating invoice:", error);
+            res.status(500).json({ error: "Internal Server Error" });
+        }
+    }
+
+    static async getInvoiceById(req, res) {
+        const id = parseInt(req.params.id, 10);
+        try {
+            const [rows] = await MySQLModel.getByid('invoices', id);
+            if (rows.length === 0) {
+                return res.status(404).json({ error: "Invoice not found" });
+            }
+            res.json(rows[0]);
+        } catch (error) {
+            console.error(`Error fetching invoice with id ${id}:`, error);
+            res.status(500).json({ error: "Internal Server Error" });
+        }
+    }
+
+    static async updateInvoiceById(req, res) {
+        const id = parseInt(req.params.id, 10);
+        const data = req.body;
+        try {
+            await MySQLModel.updateById('invoices', id, data);
+            res.json({ message: "Invoice updated successfully" });
+        } catch (error) {
+            console.error(`Error updating invoice with id ${id}:`, error);
+            res.status(500).json({ error: "Internal Server Error" });
+        }
+    }
+    /*Invoices-details Methods */
+
+    static async getAllInvoiceDetails(req, res) {
+        try {
+            const [rows] = await MySQLModel.getAll('invoice_details');
+            res.json(rows);
+        } catch (error) {
+            console.error("Error fetching invoice details:", error);
+            res.status(500).json({ error: "Internal Server Error" });
+        }
+    }
+
+    static async createInvoiceDetail(req, res) {
+        const data = req.body;
+        console.log("Creating invoice detail with data:", data);
+        try {
+            const [result] = await MySQLModel.create('invoice_details', data);
+            res.status(201).json({ id: result.insertId, message: "Invoice detail created successfully" });
+        } catch (error) {
+            console.error("Error creating invoice detail:", error);
+            res.status(500).json({ error: "Internal Server Error" });
+        }
+    }
+
+    static async getInvoiceDetailById(req, res) {
+        const id = parseInt(req.params.id, 10);
+        try {
+            const [rows] = await MySQLModel.getByid('invoice_details', id);
+            if (rows.length === 0) {
+                return res.status(404).json({ error: "Invoice detail not found" });
+            }
+            res.json(rows[0]);
+        } catch (error) {
+            console.error(`Error fetching invoice detail with id ${id}:`, error);
+            res.status(500).json({ error: "Internal Server Error" });
+        }
+    }
+
+    static async updateInvoiceDetailById(req, res) {
+        const id = parseInt(req.params.id, 10);
+        const data = req.body;
+        try {
+            await MySQLModel.updateById('invoice_details', id, data);
+            res.json({ message: "Invoice detail updated successfully" });
+        } catch (error) {
+            console.error(`Error updating invoice detail with id ${id}:`, error);
+            res.status(500).json({ error: "Internal Server Error" });
+        }
+    }
 }

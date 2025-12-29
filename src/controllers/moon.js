@@ -121,10 +121,10 @@ export class MoonController {
 
     static async getAllInvoices(req, res) {
         try {
-            const [rows] = await MySQLModel.getAll('invoices');
+            const [rows] = await MySQLModel.getAll('invoice');
             res.json(rows);
         } catch (error) {
-            console.error("Error fetching invoices:", error);
+            console.error("Error fetching invoice:", error);
             res.status(500).json({ error: "Internal Server Error" });
         }
     }
@@ -133,7 +133,7 @@ export class MoonController {
         const data = req.body;
         console.log("Creating invoice with data:", data);
         try {
-            const [result] = await MySQLModel.create('invoices', data);
+            const [result] = await MySQLModel.create('invoice', data);
             res.status(201).json({ id: result.insertId, message: "Invoice created successfully" });
         } catch (error) {
             console.error("Error creating invoice:", error);
@@ -144,7 +144,7 @@ export class MoonController {
     static async getInvoiceById(req, res) {
         const id = parseInt(req.params.id, 10);
         try {
-            const [rows] = await MySQLModel.getByid('invoices', id);
+            const [rows] = await MySQLModel.getByid('invoice', id);
             if (rows.length === 0) {
                 return res.status(404).json({ error: "Invoice not found" });
             }
@@ -159,13 +159,14 @@ export class MoonController {
         const id = parseInt(req.params.id, 10);
         const data = req.body;
         try {
-            await MySQLModel.updateById('invoices', id, data);
+            await MySQLModel.updateById('invoice', id, data);
             res.json({ message: "Invoice updated successfully" });
         } catch (error) {
             console.error(`Error updating invoice with id ${id}:`, error);
             res.status(500).json({ error: "Internal Server Error" });
         }
     }
+    
     /*Invoices-details Methods */
 
     static async getAllInvoiceDetails(req, res) {

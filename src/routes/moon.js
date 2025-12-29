@@ -19,6 +19,18 @@ export const createMoonRouter = () => {
     moonRouter.get("/clients/:id", MoonController.getClientById)
     moonRouter.put("/clients/:id", MoonController.updateClientById)
 
+    /* Invoices */
+    moonRouter.get("/invoices", MoonController.getAllInvoices)
+    moonRouter.post("/invoices", MoonController.createInvoice)
+    moonRouter.get("/invoices/:id", MoonController.getInvoiceById)
+    moonRouter.put("/invoices/:id", MoonController.updateInvoiceById)
+
+    /* Invoice_details */
+    moonRouter.get("/invoice_details", MoonController.getAllInvoiceDetails)
+    moonRouter.post("/invoice_details", MoonController.createInvoiceDetail)
+    moonRouter.get("/invoice_details/:id", MoonController.getInvoiceDetailById)
+    moonRouter.put("/invoice_details/:id", MoonController.updateInvoiceDetailById)
+
     
 
     return moonRouter

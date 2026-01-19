@@ -31,21 +31,21 @@ export class MySQLModel {
         return connection.execute(`SELECT * FROM \`${table}\``)
     }
 
-    static getByid(table, id) {
+    static getByid(table, id, id_name) {
         if (!/^[A-Za-z0-9_]+$/.test(table)) {
             throw new Error('Invalid table name')
         }
-        return connection.execute(`SELECT * FROM \`${table}\` WHERE id = ?`, [id])
+        return connection.execute(`SELECT * FROM \`${table}\` WHERE ${id_name} = ?`, [id])
     }
 
-    static updateById(table, id, data) {
+    static updateById(table, id, data,id_name) {
         if (!/^[A-Za-z0-9_]+$/.test(table)) {
             throw new Error('Invalid table name')
         }
         const fields = Object.keys(data).map(key => `\`${key}\` = ?`).join(', ')
         const values = Object.values(data)
         values.push(id)
-        return connection.execute(`UPDATE \`${table}\` SET ${fields} WHERE id = ?`, values)
+        return connection.execute(`UPDATE \`${table}\` SET ${fields} WHERE ${id_name} = ?`, values)
     }
 
     static deleteById(table, id) {

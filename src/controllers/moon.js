@@ -144,7 +144,7 @@ export class MoonController {
     static async getInvoiceById(req, res) {
         const id = parseInt(req.params.id, 10);
         try {
-            const [rows] = await MySQLModel.getByid('invoice', id);
+            const [rows] = await MySQLModel.getByid('invoice', id,'invoice_id');
             if (rows.length === 0) {
                 return res.status(404).json({ error: "Invoice not found" });
             }
@@ -159,7 +159,7 @@ export class MoonController {
         const id = parseInt(req.params.id, 10);
         const data = req.body;
         try {
-            await MySQLModel.updateById('invoice', id, data);
+            await MySQLModel.updateById('invoice', id, data,'invoice_id');
             res.json({ message: "Invoice updated successfully" });
         } catch (error) {
             console.error(`Error updating invoice with id ${id}:`, error);
@@ -194,7 +194,7 @@ export class MoonController {
     static async getInvoiceDetailById(req, res) {
         const id = parseInt(req.params.id, 10);
         try {
-            const [rows] = await MySQLModel.getByid('invoice_details', id);
+            const [rows] = await MySQLModel.getByid('invoice_details', id, 'detail_id');
             if (rows.length === 0) {
                 return res.status(404).json({ error: "Invoice detail not found" });
             }
@@ -209,7 +209,7 @@ export class MoonController {
         const id = parseInt(req.params.id, 10);
         const data = req.body;
         try {
-            await MySQLModel.updateById('invoice_details', id, data);
+            await MySQLModel.updateById('invoice_details', id, data, 'detail_id');
             res.json({ message: "Invoice detail updated successfully" });
         } catch (error) {
             console.error(`Error updating invoice detail with id ${id}:`, error);

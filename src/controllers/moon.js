@@ -94,7 +94,7 @@ export class MoonController {
     static async getClientById(req, res) {
         const id = parseInt(req.params.id, 10);
         try {
-            const [rows] = await MySQLModel.getByid('clients', id);
+            const [rows] = await MySQLModel.getByid('clients', id, 'client_id');
             if (rows.length === 0) {
                 return res.status(404).json({ error: "Client not found" });
             }
@@ -109,7 +109,7 @@ export class MoonController {
         const id = parseInt(req.params.id, 10);
         const data = req.body;
         try {
-            await MySQLModel.updateById('clients', id, data);
+            await MySQLModel.updateById('clients', id, data, 'client_id');
             res.json({ message: "Client updated successfully" });
         } catch (error) {
             console.error(`Error updating client with id ${id}:`, error);

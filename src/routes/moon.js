@@ -31,7 +31,8 @@ export const createMoonRouter = () => {
     moonRouter.get("/invoice_details/:id", MoonController.getInvoiceDetailById)
     moonRouter.put("/invoice_details/:id", MoonController.updateInvoiceDetailById)
 
-    
+    /* Export Excel */
+    moonRouter.post("/export-excel", MoonController.exportInvoiceToExcel)
 
     return moonRouter
 }

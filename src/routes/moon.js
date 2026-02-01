@@ -1,4 +1,6 @@
 import { MoonController } from "../controllers/moon.js"
+import { CompanySettingsController } from "../controllers/companySettings.js"
+import { ExpensesController } from "../controllers/expenses.js"
 import { Router } from "express"
 
 
@@ -33,6 +35,18 @@ export const createMoonRouter = () => {
 
     /* Export Excel */
     moonRouter.post("/export-excel", MoonController.exportInvoiceToExcel)
+
+    /* Export PDF */
+    moonRouter.post("/export-pdf", MoonController.exportInvoiceToPDF)
+
+    /* Company Settings */
+    moonRouter.get("/company-settings", CompanySettingsController.getSettings)
+    moonRouter.post("/company-settings", CompanySettingsController.updateSettings)
+
+    /* Operational Expenses */
+    moonRouter.get("/operational-expenses", ExpensesController.getAllExpenses)
+    moonRouter.post("/operational-expenses", ExpensesController.createExpense)
+    moonRouter.delete("/operational-expenses/:id", ExpensesController.deleteExpense)
 
     return moonRouter
 }

@@ -5,7 +5,7 @@ const connection = await mysql.createConnection({
     host: 'localhost',
     port: 3306,
     user: 'root',
-    password: 'Loki_2903',
+    password: '123456',
     database: 'moondb'
 })
 
@@ -38,7 +38,7 @@ export class MySQLModel {
         return connection.execute(`SELECT * FROM \`${table}\` WHERE ${id_name} = ?`, [id])
     }
 
-    static updateById(table, id, data,id_name) {
+    static updateById(table, id, data, id_name) {
         if (!/^[A-Za-z0-9_]+$/.test(table)) {
             throw new Error('Invalid table name')
         }
@@ -65,7 +65,23 @@ export class MySQLModel {
         return connection.execute(`INSERT INTO \`${table}\` (${fields}) VALUES (${placeholders})`, values)
     }
 
+    // --- Transacciones ---
+    static async beginTransaction() {
+        return connection.beginTransaction();
+    }
 
+    static async commit() {
+        return connection.commit();
+    }
+
+    static async rollback() {
+        return connection.rollback();
+    }
+
+    // Método para ejecutar queries directos (necesario para custom complex deletions)
+    static execute(query, params) {
+        return connection.execute(query, params);
+    }
 }
 
 

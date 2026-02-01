@@ -1,6 +1,7 @@
 import { MySQLModel } from "../models/mysql-model.js";
 import { UserSchema } from "../schemas/users.js";
 import ExcelJS from "exceljs";
+import PDFDocument from "pdfkit";
 
 export class MoonController {
     static async getAllUsers(req, res) {
@@ -78,7 +79,7 @@ export class MoonController {
             console.error("Error fetching clients:", error);
             res.status(500).json({ error: "Internal Server Error" });
         }
-    }   
+    }
 
     static async createClient(req, res) {
         const data = req.body;
@@ -116,7 +117,7 @@ export class MoonController {
             console.error(`Error updating client with id ${id}:`, error);
             res.status(500).json({ error: "Internal Server Error" });
         }
-    }   
+    }
 
     /* Invoices Methods */
 
@@ -142,14 +143,67 @@ export class MoonController {
         }
     }
 
+
+
+    /*Invoices-details Methods */
+
+    static async getAllInvoiceDetails(req, res) {
+        try {
+            const [rows] = await MySQLModel.getAll('invoice_details');
+            res.json(rows);
+        } catch (error) {
+            console.error("Error fetching invoice details:", error);
+            res.status(500).json({ error: "Internal Server Error" });
+        }
+    }
+
+    static async createInvoiceDetail(req, res) {
+        const data = req.body;
+        console.log("Creating invoice detail with data:", data);
+        try {
+            const [result] = await MySQLModel.create('invoice_details', data);
+            res.status(201).json({ id: result.insertId, message: "Invoice detail created successfully" });
+        } catch (error) {
+            console.error("Error creating invoice detail:", error);
+            res.status(500).json({ error: "Internal Server Error" });
+        }
+    }
+
+    static async getInvoiceDetailById(req, res) {
+        const id = parseInt(req.params.id, 10);
+        try {
+            const [rows] = await MySQLModel.getByid('invoice_details', id, 'detail_id');
+            if (rows.length === 0) {
+                return res.status(404).json({ error: "Invoice detail not found" });
+            }
+            res.json(rows[0]);
+        } catch (error) {
+            console.error(`Error fetching invoice detail with id ${id}:`, error);
+            res.status(500).json({ error: "Internal Server Error" });
+        }
+    }
+
     static async getInvoiceById(req, res) {
         const id = parseInt(req.params.id, 10);
         try {
-            const [rows] = await MySQLModel.getByid('invoice', id,'invoice_id');
-            if (rows.length === 0) {
+            // Get invoice header
+            const [invoiceRows] = await MySQLModel.getByid('invoice', id, 'invoice_id');
+            if (invoiceRows.length === 0) {
                 return res.status(404).json({ error: "Invoice not found" });
             }
-            res.json(rows[0]);
+
+            // Get invoice items
+            const [itemsRows] = await MySQLModel.execute(
+                'SELECT * FROM invoice_details WHERE invoice_id = ?',
+                [id]
+            );
+
+            const invoice = {
+                ...invoiceRows[0],
+                items: itemsRows
+            };
+
+            res.json(invoice);
         } catch (error) {
             console.error(`Error fetching invoice with id ${id}:`, error);
             res.status(500).json({ error: "Internal Server Error" });
@@ -158,17 +212,51 @@ export class MoonController {
 
     static async updateInvoiceById(req, res) {
         const id = parseInt(req.params.id, 10);
-        const data = req.body;
+        const { client_id, invoice_date, total_amount, items, apply_tax } = req.body;
+
+        if (!id || !client_id || !items || !Array.isArray(items)) {
+            return res.status(400).json({ error: "Missing required fields" });
+        }
+
         try {
-            await MySQLModel.updateById('invoice', id, data,'invoice_id');
+            await MySQLModel.beginTransaction();
+
+            // 1. Actualizar Factura Principal
+            // Nota: total_amount debe venir del frontend o recalcularse.
+            await MySQLModel.updateById('invoice', id, {
+                client_id,
+                invoice_date,
+                total_amount,
+                apply_tax
+                // STATUS no se cambia aquí (se usa endpoint específico)
+            }, 'invoice_id');
+
+            // 2. Eliminar items existentes (Estrategia: Drop & Recreate)
+            // Usamos query directo porque deleteById es solo por ID primario
+            await MySQLModel.execute('DELETE FROM invoice_details WHERE invoice_id = ?', [id]);
+
+            // 3. Insertar nuevos items
+            for (const item of items) {
+                await MySQLModel.create('invoice_details', {
+                    invoice_id: id,
+                    description: item.description,
+                    quantity: item.quantity,
+                    unit_price: item.unit_price,
+                    total_row: item.total_row || (item.quantity * item.unit_price) // Fallback calculation
+                });
+            }
+
+            await MySQLModel.commit();
             res.json({ message: "Invoice updated successfully" });
+
         } catch (error) {
+            await MySQLModel.rollback();
             console.error(`Error updating invoice with id ${id}:`, error);
-            res.status(500).json({ error: "Internal Server Error" });
+            res.status(500).json({ error: "Internal Server Error updating invoice" });
         }
     }
-    
-    /*Invoices-details Methods */
+
+    /* Invoice_details Methods */
 
     static async getAllInvoiceDetails(req, res) {
         try {
@@ -282,11 +370,11 @@ export class MoonController {
         headerRow.eachCell(cell => {
             cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1F2937' } };
             cell.alignment = { horizontal: 'center', vertical: 'middle' };
-            cell.border = { 
-                top: { style: 'medium' }, 
-                left: { style: 'thin' }, 
-                bottom: { style: 'medium' }, 
-                right: { style: 'thin' } 
+            cell.border = {
+                top: { style: 'medium' },
+                left: { style: 'thin' },
+                bottom: { style: 'medium' },
+                right: { style: 'thin' }
             };
         });
         headerRow.height = 25;
@@ -334,9 +422,13 @@ export class MoonController {
         worksheet.getCell(`F${totalsRow}`).border = { left: { style: 'thin' }, right: { style: 'thin' }, top: { style: 'thin' } };
 
         worksheet.mergeCells(`A${totalsRow + 1}:E${totalsRow + 1}`);
-        worksheet.getCell(`A${totalsRow + 1}`).value = 'I.V.A 16%';
+        const applyTax = invoiceData.apply_tax !== 0 && invoiceData.apply_tax !== false && invoiceData.apply_tax !== '0';
+        const taxRate = applyTax ? '16%' : '0%';
+        const taxValue = applyTax ? (invoiceData.tax || 0) : 0;
+
+        worksheet.getCell(`A${totalsRow + 1}`).value = `I.V.A ${taxRate}`;
         worksheet.getCell(`A${totalsRow + 1}`).alignment = { horizontal: 'right' };
-        worksheet.getCell(`F${totalsRow + 1}`).value = (invoiceData.tax || 0);
+        worksheet.getCell(`F${totalsRow + 1}`).value = taxValue;
         worksheet.getCell(`F${totalsRow + 1}`).numFmt = '"$"#,##0.00';
         worksheet.getCell(`F${totalsRow + 1}`).border = { left: { style: 'thin' }, right: { style: 'thin' } };
 
@@ -354,5 +446,130 @@ export class MoonController {
 
         await workbook.xlsx.write(res);
         res.end();
+    }
+
+    static async exportInvoiceToPDF(req, res) {
+        try {
+            const invoiceData = req.body;
+
+            // Crear documento PDF
+            const doc = new PDFDocument({
+                size: 'LETTER',
+                margins: { top: 50, bottom: 50, left: 50, right: 50 }
+            });
+
+            // Headers para descarga
+            res.setHeader('Content-Type', 'application/pdf');
+            res.setHeader('Content-Disposition', `attachment; filename=Factura_${(invoiceData.client_name || 'Cliente').replace(/\s+/g, '_')}.pdf`);
+
+            // Pipe a response
+            doc.pipe(res);
+
+            // --- ENCABEZADO ---
+            doc.fontSize(24).fillColor('#1E40AF').font('Helvetica-Bold').text('SUMINISTROS DEPOMED', 50, 50);
+            doc.fontSize(10).fillColor('#374151').font('Helvetica-Bold').text('SUMINISTROS DEPOMED, C.A.', 350, 50, { align: 'right' });
+            doc.fontSize(8).fillColor('#6B7280').font('Helvetica')
+                .text('RIF: J-50123456-7', 350, 65, { align: 'right' })
+                .text('Av. Principal de los Ruices, Caracas.', 350, 77, { align: 'right' })
+                .text('Telf: 0212-1234567', 350, 89, { align: 'right' })
+                .text('Email: contacto@depomed.com', 350, 101, { align: 'right' });
+
+            // Línea separadora
+            doc.moveTo(50, 130).lineTo(562, 130).strokeColor('#1F2937').lineWidth(2).stroke();
+
+            // --- INFO FACTURA ---
+            const controlNo = `CONTROL No: 00-${(invoiceData.invoice_id || Math.floor(Math.random() * 99999)).toString().padStart(5, '0')}`;
+            doc.fontSize(11).fillColor('#DC2626').font('Helvetica-Bold').text(controlNo, 350, 145, { align: 'right' });
+            doc.fontSize(10).fillColor('#000000').font('Helvetica-Bold').text(`Factura N. ${invoiceData.invoice_id || 'BORRADOR'}`, 350, 160, { align: 'right' });
+            doc.fontSize(9).fillColor('#374151').font('Helvetica').text(`Fecha Emisión: ${invoiceData.invoice_date}`, 350, 175, { align: 'right' });
+
+            // --- CLIENTE ---
+            doc.fontSize(8).fillColor('#9CA3AF').font('Helvetica-Bold').text('CLIENTE:', 50, 200);
+            doc.fontSize(12).fillColor('#1F2937').font('Helvetica-Bold').text(invoiceData.client_name || 'Particular', 50, 215);
+
+            // --- TABLA DE ITEMS ---
+            const tableTop = 260;
+            const col1X = 50;   // Cantidad
+            const col2X = 100;  // Ref
+            const col3X = 150;  // Descripción
+            const col4X = 380;  // Precio Unit
+            const col5X = 460;  // % IVA
+            const col6X = 510;  // Total
+
+            // Header de tabla
+            doc.rect(50, tableTop, 512, 25).fillColor('#1F2937').fill();
+            doc.fontSize(9).fillColor('#FFFFFF').font('Helvetica-Bold');
+            doc.text('CANT.', col1X + 5, tableTop + 8, { width: 45, align: 'center' });
+            doc.text('REF.', col2X + 5, tableTop + 8, { width: 45, align: 'center' });
+            doc.text('DESCRIPCIÓN', col3X + 5, tableTop + 8, { width: 225 });
+            doc.text('P. UNIT', col4X + 5, tableTop + 8, { width: 75, align: 'right' });
+            doc.text('% IVA', col5X + 5, tableTop + 8, { width: 45, align: 'center' });
+            doc.text('TOTAL', col6X + 5, tableTop + 8, { width: 47, align: 'right' });
+
+            // Items
+            let currentY = tableTop + 30;
+            doc.fillColor('#000000').font('Helvetica').fontSize(9);
+
+            invoiceData.items.forEach((item, index) => {
+                // Convertir a números para evitar errores con toFixed
+                const quantity = Number(item.quantity);
+                const unitPrice = parseFloat(item.unit_price);
+                const rowTotal = item.total_row ? parseFloat(item.total_row) : (quantity * unitPrice);
+
+                // Alternar colores de fondo
+                if (index % 2 === 0) {
+                    doc.rect(50, currentY - 5, 512, 20).fillColor('#F9FAFB').fill();
+                }
+
+                doc.fillColor('#000000');
+                doc.text(quantity.toString(), col1X + 5, currentY, { width: 45, align: 'center' });
+                doc.text('-', col2X + 5, currentY, { width: 45, align: 'center' });
+                doc.text(item.description, col3X + 5, currentY, { width: 225 });
+                const applyTax = invoiceData.apply_tax !== 0 && invoiceData.apply_tax !== false && invoiceData.apply_tax !== '0';
+
+                doc.text(`$${unitPrice.toFixed(2)}`, col4X + 5, currentY, { width: 75, align: 'right' });
+                doc.text(applyTax ? '16%' : '0%', col5X + 5, currentY, { width: 45, align: 'center' });
+                doc.text(`$${rowTotal.toFixed(2)}`, col6X + 5, currentY, { width: 47, align: 'right' });
+
+                currentY += 20;
+            });
+
+            // Línea separadora después de items
+            currentY += 10;
+            doc.moveTo(50, currentY).lineTo(562, currentY).strokeColor('#E5E7EB').lineWidth(1).stroke();
+
+            // --- TOTALES ---
+            currentY += 20;
+            const totalsX = 400;
+
+            // Convertir totales a números
+            const applyTax = invoiceData.apply_tax !== 0 && invoiceData.apply_tax !== false && invoiceData.apply_tax !== '0';
+            const subtotal = parseFloat(invoiceData.subtotal || invoiceData.total_amount || 0);
+            const tax = applyTax ? parseFloat(invoiceData.tax || 0) : 0;
+            const totalAmount = parseFloat(invoiceData.total_amount || 0);
+
+            doc.fontSize(9).fillColor('#6B7280').font('Helvetica');
+            doc.text('Base Imponible Bs.', totalsX, currentY, { width: 100, align: 'left' });
+            doc.text(`$${subtotal.toFixed(2)}`, totalsX + 105, currentY, { width: 60, align: 'right' });
+
+            currentY += 18;
+            doc.text(applyTax ? 'I.V.A (16%)' : 'I.V.A (0%)', totalsX, currentY, { width: 100, align: 'left' });
+            doc.text(`$${tax.toFixed(2)}`, totalsX + 105, currentY, { width: 60, align: 'right' });
+
+            currentY += 18;
+            doc.rect(totalsX, currentY - 5, 165, 25).fillColor('#F3F4F6').fill();
+            doc.fontSize(11).fillColor('#000000').font('Helvetica-Bold');
+            doc.text('TOTAL DOCUMENTO', totalsX + 5, currentY + 3, { width: 100, align: 'left' });
+            doc.text(`$${totalAmount.toFixed(2)}`, totalsX + 110, currentY + 3, { width: 50, align: 'right' });
+
+            // Finalizar PDF
+            doc.end();
+
+        } catch (error) {
+            console.error('Error generando PDF:', error);
+            if (!res.headersSent) {
+                res.status(500).json({ error: 'Error al generar PDF', details: error.message });
+            }
+        }
     }
 }

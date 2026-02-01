@@ -6,7 +6,7 @@ import { Router } from "express"
 
 export const createMoonRouter = () => {
     const moonRouter = Router()
-    //const moonController = new MoonController()
+    const moonController = new MoonController()
 
     /* Users */
     moonRouter.get("/users", MoonController.getAllUsers)

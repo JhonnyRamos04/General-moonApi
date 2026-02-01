@@ -4,9 +4,29 @@ import ExcelJS from "exceljs";
 import PDFDocument from "pdfkit";
 
 export class MoonController {
-    static async getAllUsers(req, res) {
+    getAllUsers = async (req, res) => {
         try {
-            const [rows] = await MySQLModel.getAll('users');
+            const [rows] = await MySQLModel.getAll('users')
+            res.json(rows);
+        } catch (error) {
+            console.error("Error fetching moons:", error)
+            res.status(500).json({ error: "Internal Server Error" })
+        }
+    }
+    getInvoces = async (req, res) => {
+        try {
+            const [rows] = await MySQLModel.getInvoices('invoice')
+            res.json(rows);
+        }
+        catch (error) {
+            console.error("Error fetching invoices:", error)
+            res.status(500).json({ error: "Internal Server Error" })
+        }
+    }
+
+    getallproducts = async (req, res) => {
+        try {
+            const [rows] = await MySQLModel.getAll('products')
             res.json(rows);
         } catch (error) {
             console.error("Error fetching moons:", error);
